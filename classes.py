@@ -7,6 +7,34 @@ import random
 torch.manual_seed(1)
 random.seed(1)
 
+#network definition
+#setting up the RNN to accept a sequence of freq values at each time step, and predict the corresponding phoneme
+class RNN(nn.Module):
+
+    def __init__(self, input_size, hidden_size, output_depth,number_layers, batch_size=1):
+        super(RNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.batch_size=batch_size
+        self.lstm = nn.LSTM(input_size, hidden_size,number_layers)
+
+        # The linear layer that maps from hidden state space to tag space
+        self.hidden2out = nn.Linear(hidden_size, output_depth)
+        self.hidden = self.init_hidden()
+
+    def forward(self, feature_list): #emeds are the list of features for each word in the sentece
+        #sent_size=len(embeds)
+        lstm_out, _ = self.lstm( feature_list.view(len( feature_list), 1, -1))
+        tag_space = self.hidden2out(lstm_out.view(len( feature_list), -1))
+        #print(tag_space.view([1,1,1]))
+        tag_scores = torch.sigmoid(tag_space)
+        #return tag_scores
+        return tag_space
+       
+    def init_hidden(self):
+        return (torch.zeros(1, self.batch_size, self.hidden_size),
+                torch.zeros(1, self.batch_size, self.hidden_size))  
+    
+
 #get inputs of any shape, gets outputs of a certain size 
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, batch_size=1):

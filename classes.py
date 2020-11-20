@@ -166,4 +166,63 @@ for i in range(line_tensor.size()[0]):
   output = rnn(cur_tensor)
 print(output)
 
+#######################
+#This is CNN
 
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+class Net(nn.Module):
+    def __init__(self):
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
+        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        self.conv2_drop = nn.Dropout2d()
+        self.fc1 = nn.Linear(320, 50)
+        #self.fc2 = nn.Linear(50, 10)
+        self.fc2 = nn.Linear(50, 28) #should be dynamic input
+
+    def forward(self, x):
+        x = F.relu(F.max_pool2d(self.conv1(x), 2))
+        x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = x.view(-1, 320)
+        x = F.relu(self.fc1(x))
+        x = F.dropout(x, training=self.training)
+        x = self.fc2(x)
+        return F.log_softmax(x)
+
+network = Net()
+optimizer = optim.SGD(network.parameters(), lr=learning_rate,
+                      momentum=momentum)
+network = network.float()
+
+import os
+train_losses = []
+train_counter = []
+test_losses = []
+test_counter = [i*len(train_files) for i in range(n_epochs + 1)]
+
+results_dir="character_recognition/results2"
+if not os.path.exists(results_dir): os.mkdir(results_dir)
+def train(epoch):
+  network.train()
+  train_counter=0
+  #for batch_idx, (data, target) in enumerate(train_loader):
+  #for batch_idx, (data, target) in enumerate(trainloader2):
+  for batch_idx, (data, target) in enumerate(train_files):
+    data=data.squeeze()
+    data=data.unsqueeze_(0)
+    data=data.unsqueeze_(0)
+    target=torch.tensor([target])
+    optimizer.zero_grad()
+    #output = network(data)
+    output = network(data.float())
+    
+    loss = F.nll_loss(output, target)
+    loss.backward()
+    optimizer.step()
+    train_losses.append(loss.item())
+    #train_counter.append((batch_idx*64) + ((epoch-1)*len(train_files)))
+    #train_counter.append((batch_idx*64) + ((epoch-1)*len(train_files)))
+    train_counter+=1

@@ -7,6 +7,42 @@ import random
 torch.manual_seed(1)
 random.seed(1)
 
+device = torch.device('cuda')
+
+
+class RNN(nn.Module):
+  def __init__(self, input_size, hidden_size, output_size,num_layers, matching_in_out=False, batch_size=1):
+    super(RNN, self).__init__()
+    self.input_size = input_size
+    self.hidden_size = hidden_size
+    self.output_size = output_size
+    self.num_layers = num_layers
+    self.batch_size = batch_size
+    self.matching_in_out = matching_in_out #length of input vector matches the length of output vector 
+    self.lstm = nn.LSTM(input_size, hidden_size,num_layers)
+    self.hidden2out = nn.Linear(hidden_size, output_size)
+    self.hidden = self.init_hidden()
+  def forward(self, feature_list):
+    feature_list.to(device) #### <<<<<<<<<<<<<<<<< 
+    if self.matching_in_out:
+      # test=feature_list.view(len( feature_list), 1, -1)
+      # print(test.shape)
+      lstm_out, _ = self.lstm( feature_list.view(len( feature_list), 1, -1))
+      output_space = self.hidden2out(lstm_out.view(len( feature_list), -1))
+      output_scores = torch.sigmoid(output_space) #we'll need to check if we need this sigmoid
+      return output_scores #output_scores
+    else:
+      for i in range(len(feature_list)):
+        cur_ft_tensor=feature_list[i]#.view([1,1,self.input_size])
+        cur_ft_tensor=cur_ft_tensor.view([1,1,self.input_size])
+        lstm_out, self.hidden = self.lstm(cur_ft_tensor, self.hidden)
+        outs=self.hidden2out(lstm_out)
+      return outs
+  def init_hidden(self):
+    #return torch.rand(self.num_layers, self.batch_size, self.hidden_size)
+    return (torch.rand(self.num_layers, self.batch_size, self.hidden_size).to(device),
+            torch.rand(self.num_layers, self.batch_size, self.hidden_size).to(device))
+
 #network definition
 #setting up the RNN to accept a sequence of freq values at each time step, and predict the corresponding phoneme
 class RNN(nn.Module):
